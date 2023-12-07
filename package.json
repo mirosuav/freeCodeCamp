@@ -3,6 +3,7 @@
 	"author": "Mirosław Miedziarek",
 	"description": "A project that does something awesome",
 	"keywords": [ "learning", "programming", "freecodecamp" ],
+	"license": "MIT",
 	"dependencies": {
 		"express": "^4.14.0"
 	},
