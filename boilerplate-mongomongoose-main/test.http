@@ -1,0 +1,4 @@
+GET http://localhost:3000/_api/create-and-save-person
+
+
+POST http://localhost:3000/_api/create-many-people
