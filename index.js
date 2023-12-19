@@ -9,14 +9,18 @@ const app = express();
 
 // Basic Configuration
 const port = process.env.PORT || 3000;
+//https://learn.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-nodejs?tabs=managed-identity%2Croles-azure-portal%2Csign-in-visual-studio-code#tabpanel_2_managed-identity
+const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
+if (!accountName) throw Error('Azure Storage accountName not found');
 
-const dbEndpoint = process.env.DB_ENDPOINT;
+const dbEndpoint = `https://${accountName}.table.core.windows.net`;
 const dbCredential = new DefaultAzureCredential()
+const tableClient = new TableClient(
+  dbEndpoint,
+  'shortedUrl',
+  dbCredential
+);
 
-// new AzureNamedKeyCredential(
-//   "<account-name>",
-//   "<account-key>"
-// );
 
 app.use(cors());
 
@@ -28,77 +32,93 @@ app.get('/', function (req, res) {
   res.sendFile(process.cwd() + '/views/index.html');
 });
 
+//Get all shorted urls
+app.get('/api/all', async function (req, res) {
+  try {
+    let result = await tableClient.listEntities();
+    return { data: result };
+  }
+  catch (err) {
+    console.log(err);
+    res.json({ error: 'Internal server error' });
+  }
+});
+
+//Create shorter url
 app.post('/api/shorturl', async function (req, res) {
-  const orgUrl = req.body.url;
+  try {
+    const orgUrl = req.body.url;
 
-  if (validateUrl(orgUrl)) {
+    if (!validateUrl(orgUrl)) {
+      res.json({ error: 'invalid url' });
+      return;
+    }
 
-    const shortUlr = await shortenUrl(orgUrl);
+    const shortUrl = hashCode(orgUrl);
+    
+    const entry = {
+      partitionKey: "",
+      rowKey: shortUrl,
+      url: orgUrl
+    };
+    await tableClient.upsertEntity(entry);
+    //}
 
     res.json({
       original_url: orgUrl,
-      short_url: shortUlr
+      short_url: shortUrl
     });
 
   }
+  catch (err) {
+    console.log(err);
+    res.json({ error: 'Internal server error' });
+  }
 });
 
+//Redirect by shorted URL
 app.get('/api/shorturl/:shortUrl', async function (req, res) {
-  const orgUrl = await getFullUrl(shortUlr);
-  if (orgUrl) {
-    res.redirect(orgUrl);
+  try {
+    const shortUrl = req.params.shortUrl;
+    const entry = await tableClient.getEntity("", shortUrl.toString())
+      .catch((error) => {
+        throw error;
+      });
+
+    if (entry) {
+      res.redirect(entry.url);
+    }
+    else {
+      res.status(400);
+    }
   }
-  else {
-    res.status(400);
+  catch (err) {
+    console.log(err);
+    res.json({ error: 'Internal server error' });
   }
 });
 
+
+//Start server
 app.listen(port, function () {
   console.log(`Listening on port ${port}`);
 });
 
+
+
 function validateUrl(orgUrl) {
-  return new URL(orgUrl);
+  try {
+    const newUrl = new URL(orgUrl);
+    return newUrl.protocol === 'http:' || newUrl.protocol === 'https:';
+  } catch (err) {
+    return false;
+  }
 }
 
-async function shortenUrl(orgUrl) {
-
-  const tableClient = new TableClient(
-    dbEndpoint,
-    'shortedurls',
-    dbCredential
-  );
-
- const shortedUrl = hashCode(orgUrl);
-
-  const entry = {
-    partitionKey: "",
-    rowKey: shortedUrl.toString(),
-    url: orgUrl
-  };
-
-  await tableClient.createEntity(entry);
-
-  return shortedUrl;
-};
-
-async function getFullUrl(shortUrl) {
-  const tableClient = new TableClient(
-    dbEndpoint,
-    'shortedurls',
-    dbCredential
-  );
-
-  let result = await tableClient.getEntity("", shortUrl)
-  .catch((error) => {
-    return undefined;
-  });
-
-  return result.url;
-};
-
 function hashCode(s) {
-  for(var i = 0, h = 0; i < s.length; i++)
-      h = Math.imul(31, h) + s.charCodeAt(i) | 0;
-  return h;
+  for (var i = 0, h = 0; i < s.length; i++)
+    h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+  return h.toString();
+
+  //Math.floor(Math.random() * 1000000).toString();
 }
