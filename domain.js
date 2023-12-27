@@ -110,7 +110,7 @@ class Exercise {
             partitionKey: "",
             rowKey: this.id,
             _userId: this.user.id,
-            date: this.date.toDateString(),
+            date: this.date,
             duration: this.duration,
             description: this.description
         }
@@ -160,19 +160,50 @@ class Exercise {
     }
 
 
-    static async fetchLogArray(user, from, to ,limit) {
+    static async fetchLogArray(user, from, to, limit) {
         if (!user)
             throw new Error("User is required.");
 
+        let filter = `_userId eq '${user.id}'`;
+
+        const fromN = Date.parse(from);
+        if (fromN)
+        {
+            const _from =new Date(fromN);
+            filter += `and date ge datetime'${_from.toISOString()}'`;
+        }
+
+        const toN = Date.parse(to);
+        if (toN)
+        {
+            const _to =new Date(toN);
+            filter += `and date le datetime'${_to.toISOString()}'`;
+        }
+
+
         let exercises = await Repo
             .Exercises()
-            .fetchEntitiesByProperty("_userId", user.id);
+            .fetchEntities(filter, parseInt(limit));
 
         return exercises.map(x => {
             return {
                 description: x.description,
                 duration: x.duration,
-                date: x.date,
+                date: x.date.toDateString(),
+            }
+        });
+    }
+
+    static async fetchAll() {
+        let exercises = await Repo
+            .Exercises()
+            .fetchAllEntities();
+
+        return exercises.map(x => {
+            return {
+                description: x.description,
+                duration: x.duration,
+                date: x.date.toDateString(),
             }
         });
     }

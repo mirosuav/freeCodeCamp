@@ -54,29 +54,36 @@ app.post('/api/users/:_id/exercises', async (req, res, next) => {
 });
 
 
-// {
-//   username: "fcc_test",
-//   count: 1,
-//   _id: "5fb5853f734231456ccb3b05",
-//   log: [{
-//     description: "test",
-//     duration: 60,
-//     date: "Mon Jan 01 1990",
-//   }]
-// }
 //Query user exercises
 //?[from][&to][&limit]
 app.get('/api/users/:_id/logs', async (req, res, next) => {
   try {
     const user = await User.fetchById(req.params._id);
-    const logs = await Exercise.fetchLogArray(user, req.query.from, req.query.to, req.query.limit);
+    if (!user) {
+      res.sendStatus(404);
+    }
+    else {
+      const logs = await Exercise.fetchLogArray(user, req.query.from, req.query.to, req.query.limit);
 
-    res.json({
-      username: user.name,
-      count: logs.length,
-      _id: user.id,
-      log: logs
-    })
+      res.json({
+        username: user.name,
+        count: logs.length,
+        _id: user.id,
+        log: logs
+      })
+    }
+  }
+  catch (err) {
+    console.error(err);
+    next(err);
+  }
+});
+
+app.get('/api/logs', async (req, res, next) => {
+  try {
+    const logs = await Exercise.fetchAll();
+
+    res.json(logs);
 
   }
   catch (err) {
@@ -84,6 +91,7 @@ app.get('/api/users/:_id/logs', async (req, res, next) => {
     next(err);
   }
 });
+
 
 
 const listener = app.listen(process.env.PORT || 3000, () => {

@@ -55,27 +55,37 @@ class TableRepo {
             return entities;
         } catch (error) {
             console.error(`Error occurred while fetching entities: ${error.message}`);
-            throw error;
+            return undefined;
         }
     }
 
     async fetchEntitiesByProperty(propertyName, propertyValue) {
         return await this.fetchEntities(`${propertyName} eq '${propertyValue}'`);
     }
-
-    async fetchEntities(_filterPhrase) {
+    
+    /**
+     * 
+     * @param {string} _filterPhrase 
+     * @param {number} _limit 
+     * @returns 
+     */
+    async fetchEntities(_filterPhrase, _limit) {
         try {
+            let _count = 0;
             let entities = [];
             let iter = this.tableClient.listEntities({
                 queryOptions: { filter: _filterPhrase }
             });
             for await (let entity of iter) {
                 entities.push(entity);
+                _count += 1;
+                if (_limit && _count >= _limit)
+                    break;
             }
             return entities;
         } catch (error) {
             console.error(`Error occurred while fetching entities: ${error.message}`);
-            throw error;
+            return undefined;
         }
     }
 
@@ -84,9 +94,12 @@ class TableRepo {
             return await this.tableClient.getEntity("", _key);
         } catch (error) {
             console.error(`Error occurred while fetching entity (RowKey:${_key}): ${error.message}`);
-            throw error;
+            return undefined;
         }
     }
+
+
+    //Timestamp gt datetime'2012-12-10T15:00:00'
 }
 
 
