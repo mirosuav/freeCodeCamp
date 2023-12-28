@@ -95,14 +95,18 @@ class Exercise {
      * @param {User} _user 
      * @param {string} _description 
      * @param {Number} _duration 
-     * @param {Date} _date 
+     * @param {EpochTimeStamp} _date 
      */
     constructor(_user, _description, _duration, _date) {
         this.user = _user;
         this.id = newUIDD();
         this.description = _description;
         this.duration = _duration;
-        this.date = _date || new Date();
+        this.date = _date || Date.now();
+    }
+
+    dateUTC() {
+        return new Date(this.date);
     }
 
     asEntity() {
@@ -120,7 +124,7 @@ class Exercise {
         return {
             _id: this.user.id,
             username: this.user.name,
-            date: this.date.toDateString(),
+            date: new Date(this.date).toDateString(),
             duration: this.duration,
             description: this.description
         }
@@ -148,7 +152,7 @@ class Exercise {
         if (!__duration || __duration < 0)
             throw new Error("Duration is required to be a positive integer.");
 
-        let __date = new Date(Date.parse(_date) || new Date().getDate());
+        let __date = parseDateInput2Unix(_date);
 
         let exercise = new Exercise(_user, _description, __duration, __date);
 
@@ -166,32 +170,32 @@ class Exercise {
 
         let filter = `_userId eq '${user.id}'`;
 
-        const fromN = Date.parse(from);
-        if (fromN)
-        {
-            const _from =new Date(fromN);
-            filter += `and date ge datetime'${_from.toISOString()}'`;
+        const _from = Date.parse(from);
+        if (_from) {
+            filter += ` and date ge ${_from}L`;
         }
 
-        const toN = Date.parse(to);
-        if (toN)
-        {
-            const _to =new Date(toN);
-            filter += `and date le datetime'${_to.toISOString()}'`;
+        const _to = Date.parse(to);
+        if (_to) {
+            filter += ` and date le ${_to}L`;
         }
-
 
         let exercises = await Repo
             .Exercises()
             .fetchEntities(filter, parseInt(limit));
 
-        return exercises.map(x => {
-            return {
-                description: x.description,
-                duration: x.duration,
-                date: x.date.toDateString(),
-            }
-        });
+        if (!exercises) {
+            return [];
+        }
+        else {
+            return exercises.map(x => {
+                return {
+                    description: x.description,
+                    duration: x.duration,
+                    date: (new Date(x.date)).toDateString(),
+                }
+            });
+        }
     }
 
     static async fetchAll() {
@@ -203,7 +207,7 @@ class Exercise {
             return {
                 description: x.description,
                 duration: x.duration,
-                date: x.date.toDateString(),
+                date: (new Date(x.date)).toDateString(),
             }
         });
     }
@@ -212,6 +216,14 @@ class Exercise {
 
 function newUIDD() {
     return crypto.randomUUID().replace(/-/gi, '');
+}
+
+function parseDateInput2Unix(_date) {
+    const _now = Date.now();
+    if (_date && _date !== "") {
+        return Date.parse(_date) || _now;
+    }
+    return _now;
 }
 
 module.exports = {

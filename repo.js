@@ -62,7 +62,7 @@ class TableRepo {
     async fetchEntitiesByProperty(propertyName, propertyValue) {
         return await this.fetchEntities(`${propertyName} eq '${propertyValue}'`);
     }
-    
+
     /**
      * 
      * @param {string} _filterPhrase 
@@ -99,7 +99,6 @@ class TableRepo {
     }
 
 
-    //Timestamp gt datetime'2012-12-10T15:00:00'
 }
 
 

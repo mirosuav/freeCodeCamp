@@ -43,6 +43,9 @@ app.post('/api/users', async (req, res, next) => {
 //Add exercises
 app.post('/api/users/:_id/exercises', async (req, res, next) => {
   try {
+
+    console.log(`exercises: ${req.body.description}, ${req.body.duration}, ${req.body.date}`);
+
     let user = await User.fetchById(req.params._id);
     const exercise = await Exercise.storeNew(user, req.body.description, req.body.duration, req.body.date);
     res.json(exercise.asResponse());
